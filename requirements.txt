@@ -1,0 +1,3 @@
+# requirements.txt
+Flask==2.3.3 # We use Flask for the API
+pytest==8.4.2 # We use pytest for the tests
