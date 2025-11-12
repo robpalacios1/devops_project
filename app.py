@@ -5,13 +5,14 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    """Ruta principal que devuelve un saludo."""
+    """Main route that returns a greeting."""
     return jsonify({"message": "Test Of Deployment! This is my DevOps Project."})
 
 @app.route('/status')
 def status():
-    """Ruta de 'health check' para saber si la app está viva."""
+    """Health check route to check if the app is alive."""
     return jsonify({"status": "ok", "service": "my-api-devops"})
 
 if __name__ == '__main__':
+    # Run the app on port 5000
     app.run(host='0.0.0.0', port=5000)
