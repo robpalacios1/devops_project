@@ -1,0 +1,60 @@
+# .github/workflows/ci-pipeline.yml
+
+# 1. Name of the workflow
+name: CI Pipeline - Tests and Build
+
+# 2. When to execute
+on:
+  # Execute on each push to 'feature/develop' or 'master'
+  push:
+    branches:
+      - "feature/develop"
+      - "master"
+  # (Optional) Allows you to execute it manually from the GitHub UI
+  workflow_dispatch:
+
+# 3. What jobs (jobs) must execute
+jobs:
+  # We define a job called 'test-and-build'
+  test-and-build:
+    # 4. On which virtual machine must run (we use Linux)
+    runs-on: ubuntu-latest
+
+    # 5. The steps (steps) that must follow
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout the code
+        uses: actions/checkout@v3
+
+      # Step 2: Configure the Python environment
+      - name: Configure Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      # Step 3: Install the Python dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Step 4: Run the unit tests
+      - name: Run unit tests (Pytest)
+        run: pytest test_app.py
+
+      # Step 5: Configure Docker (necessary to build)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Step 6: Build the Docker image
+      # (Note: we only build it, we don't publish it... yet)
+      - name: Build the Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false # 'false' means only build, no publish to a registry
+          tags: mi-api-devops:latest
