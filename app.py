@@ -1,4 +1,5 @@
 # app.py
+"""Flask API for DevOps project with basic health check endpoints."""
 from flask import Flask, jsonify
 
 app = Flask(__name__)
