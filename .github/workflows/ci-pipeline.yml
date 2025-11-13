@@ -1,61 +1,79 @@
 # .github/workflows/ci-pipeline.yml
 
-# 1. Name of the workflow
-name: CI Pipeline - Tests and Build
+name: CI/CD Pipeline - Test, Build, and Push
 
-# 2. When to execute
+# When to run
 on:
-  # Execute on each push to 'feature/develop' or 'master'
   push:
     branches:
       - "feature/develop"
       - "master"
-  # (Optional) Allows you to execute it manually from the GitHub UI
   workflow_dispatch:
 
-# 3. What jobs (jobs) must execute
-jobs:
-  # We define a job called 'test-and-build'
-  test-and-build:
-    # 4. On which virtual machine must run (we use Linux)
-    runs-on: ubuntu-latest
+# Define the environment variables for the image
+env:
+  # IMPORTANT: Make sure this matches your Docker Hub repository name
+  # Format: dockerhub-username/repository-name
+  IMAGE_NAME: devops-project
 
-    # 5. The steps (steps) that must follow
+# ---
+# 1. TEST JOB (CI)
+# ---
+jobs:
+  test:
+    name: 1. Unit Tests (CI)
+    runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout the code
-      - name: Checkout the code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Configure the Python environment
-      - name: Configure Python 3.9
+      - name: Setup Python 3.9
         uses: actions/setup-python@v4
         with:
           python-version: "3.9"
-          cache: "pip"
 
-      # Step 3: Install the Python dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Step 4: Run the unit tests
-      - name: Run unit tests (Pytest)
+      - name: Run Tests (Pytest)
         run: pytest test_app.py
 
-      # Step 5: Configure Docker (necessary to build)
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+  # ---
+  # 2. BUILD AND PUSH JOB (CD)
+  # ---
+  build-and-push:
+    name: 2. Build and Push to Docker Hub
+    runs-on: ubuntu-latest
+    # This job only runs if 'test' was successful
+    needs: test
+    # This job only runs if the push was to the 'master' branch
+    # Note: Ensure DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets are configured in repository settings
+    if: github.ref == 'refs/heads/master'
 
-      - name: Set up Docker Buildx
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Step 6: Build the Docker image
-      # (Note: we only build it, we don't publish it... yet)
-      - name: Build the Docker image
+      # Key step: Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Key step: Build and Push the image
+      - name: Build and push
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Dockerfile
-          push: false # 'false' means only build, no publish to a registry
-          tags: mi-api-devops:latest
+          push: true # <--- Publish the image
+          # Tag with 'latest' and the commit hash
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
